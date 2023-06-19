@@ -1,0 +1,202 @@
+from App_Migration import graph  , BearerAuth
+import pandas as pd  
+from mange_func import import_data , Number_of_page 
+from urls_passwords import *
+import requests
+import edges_maker
+import Clean_df as CF
+import tqdm
+import migration_edges as mE
+
+
+def Node_list_(node) : 
+    query="MATCH (p:"+node+""")
+WHERE exists(p.id_)
+WITH p, keys(p) as pKeys
+UNWIND pKeys as Key
+RETURN distinct Key"""
+    data = graph.run(query).to_data_frame()
+    list_me= list( data["Key"] ) 
+    return list_me
+    
+
+
+def query_node(node) :
+    query="MATCH (p:"+node+""")
+    WHERE exists(p.id_)
+WITH p, keys(p) as pKeys
+UNWIND pKeys as Key
+RETURN distinct Key"""
+    data = graph.run(query).to_data_frame()
+    df = pd.DataFrame(columns = list( data["Key"] ))  
+    query = "MATCH (p:"+node+") RETURN p"
+    data = graph.run(query).to_data_frame()
+    for node in data["p"]:
+        df = df.append(dict(node), ignore_index=True)  
+    return df  
+
+def rel_(rel):
+   gg=graph.run("MATCH p=()-[r:"+rel+"]->() RETURN count (r) as n").to_data_frame() 
+   gg=gg['n'][0]
+   return gg
+
+def Bokkk():
+    gg=graph.run("MATCH p=()-[r:BOOKS_FOR]->() RETURN sum(r.NumBookings) as n ").to_data_frame() 
+    gg=gg['n'][0]
+    return gg
+
+def Bo_NO():
+    gg=graph.run("MATCH p=()-[r:BOOKS_FOR]->() RETURN sum(r.NumCancel) as n ").to_data_frame() 
+    gg=gg['n'][0]
+    return gg
+
+
+
+def test_City_post(): 
+    df=import_data(urlcity , BearerAuth(key) ) ##from SQL
+    nj=query_node('City') # From neo4j
+    nj.columns = map(lambda x : 'id' if x=='id_' else x, nj.columns) 
+    for col in nj.columns:
+        assert sorted(df[col]) == sorted(nj[col])  # Comparing  
+
+
+def test_Staduim(): 
+        tdf=pd.DataFrame() 
+        for i in range(Number_of_page(urlstade, BearerAuth(key))+1) :
+             urlx=urlstade+str(i) 
+             df=import_data(urlx ,BearerAuth(key) ) 
+             tdf=pd.concat([tdf,df]) 
+        nj=query_node('Facility') 
+        nj.columns = map(lambda x : 'id' if x=='id_' else x, nj.columns)  
+        for col in nj.columns:
+            assert sorted(tdf['id']) == sorted(nj['id'])   
+        
+        
+
+
+def test_Court() : 
+    tdf=pd.DataFrame()
+    for i in range(0,Number_of_page(urlCourt1,BearerAuth(key))+1):
+         urlx=urlCourt1+str(i)
+         df=import_data(urlx ,BearerAuth(key)) 
+         tdf=pd.concat([tdf,df])  
+    tdf=tdf.drop_duplicates(subset=['id']) 
+    nj=query_node('Court') 
+    nj.columns = map(lambda x : 'id' if x=='id_' else x, nj.columns)  
+    for col in ['courtGrossHourlyRate', 'defaultHourlyRate', 'maxBookingLimit',
+           'closeTime', 'openTime', 'id', 'name', 'status']: 
+         try: 
+             assert len(tdf[col]) == len(nj[col])  
+         except:
+             print("error" , col)
+  
+
+
+
+def test_User_post(): 
+    df=pd.read_csv('users.csv') 
+    nj=query_node('User') 
+    nj.columns = map(lambda x : 'id' if x=='id_' else x, nj.columns) 
+    for col in nj.columns:
+        try: 
+            assert len(df[col]) == len(nj[col])  
+        except: 
+            print("erorr" , col) 
+  
+
+
+
+
+def test_District_post(): 
+    df=import_data(urlDist, BearerAuth(key) ) 
+    nj=query_node('District') 
+    nj.columns = map(lambda x : 'id' if x=='id_' else x, nj.columns) 
+    for col in nj.columns:
+        try : 
+            assert len(df[col]) == len(nj[col])  
+        except: 
+            print('error',col)
+
+
+
+def test_belong_to (): 
+    tdf=pd.DataFrame()
+    for i in range(0,Number_of_page(urlCourt1,BearerAuth(key))+1):
+         urlx=urlCourt1+str(i)
+         df=import_data(urlx ,BearerAuth(key)) 
+         tdf=pd.concat([tdf,df]) 
+         
+    tdf=tdf[['id','stadiumId']] 
+    assert len(tdf['id'])==rel_("BELONGS_TO") 
+         
+
+
+def test_located_at() : 
+    tdf=pd.DataFrame()
+    for i in range(0,Number_of_page(urlstade,BearerAuth(key))+1):
+         urlx=urlstade+str(i)
+         df=import_data(urlx ,BearerAuth(key)) 
+         tdf=pd.concat([tdf,df]) 
+    tdf = tdf[['id','districtId']] 
+    tdf=tdf.dropna()
+    assert len(tdf['id'])==rel_("LOCATED_AT")
+         
+
+def test_I_N () : 
+    df=import_data(urlDist,BearerAuth(key)) 
+    df = df[['id','cityId']]
+    df=df.dropna()
+    assert len(df['id'])==rel_("I_N") 
+
+
+def test_Booking_() : 
+    court_ids=graph.query("MATCH (n:Court) return n.id_").to_data_frame() 
+    list_id=court_ids["n.id_"] 
+    tdf=pd.DataFrame()
+    for idc in tqdm.tqdm(list_id) : 
+        df=import_data(CF.req(idc,i=2),BearerAuth(key)) 
+        if df.empty == False : 
+            df=edges_maker.user__court(df) 
+            #df=CF.clen_df_Bookings(df) 
+            df['first booking date']=CF.ch_time(df['first booking date']) 
+            df['last booking date']=CF.ch_time(df['last booking date']) 
+            tdf=pd.concat([tdf,df]) 
+    try:        
+       assert sum(tdf['num_bookig'])==Bokkk() 
+       assert sum(tdf['num_cancel'])==Bo_NO()  
+    except:
+        print("erorr")
+   
+
+
+####BI Testing ###
+
+
+
+def test_BI_court ():
+    court_ids=graph.query("MATCH (n:Court) return n.id_").to_data_frame() 
+    list_id=court_ids["n.id_"]
+    tdf=pd.DataFrame()
+    for ido in tqdm.tqdm(list_id) : 
+        df=import_data(CF.req2(ido),BearerAuth(key))  
+        if df.empty== False:
+           tdf=pd.concat([tdf,df]) 
+    dfo=CF.resume_com(tdf) 
+    dfo['id2c']=dfo.index 
+    cv=query_node('Court')
+    cv.columns = map(lambda x : 'id2c' if x=='id_' else x, cv.columns)
+    cv=cv[['id2c','First_mounth',
+     'First_year', 'soldHours', 'MounthServedNum', 'totalCost',
+     'courtGrossAmount']] 
+    for col in cv.columns:
+        try: 
+            assert sum(cv[col])==sum(dfo[col]) 
+            print('all is migrated') 
+        except: 
+            print('erorr' , col) 
+       
+
+
+
+
+

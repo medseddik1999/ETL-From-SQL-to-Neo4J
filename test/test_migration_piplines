@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul 18 14:52:39 2022
+
+@author: midou
+"""
+import requests
+import mange_func as M
+import Clean_df as cf 
+import BI_Migration_func as Bf
+from urls_passwords import *  
+import numpy as np
+import pandas as pd 
+import mN 
+import migration_edges
+from App_Migration import graph
+import edges_maker as em
+
+
+M.drop_database(graph)
+
+
+class BearerAuth(requests.auth.AuthBase): # key communication 
+    def __init__(self, token):
+        self.token = token
+    def __call__(self, r):
+        r.headers["authorization"] = "Bearer " + self.token
+        return r 
+'''
+toy_user=M.import_data(urlUsers, BearerAuth(key) ) 
+toy_Booking=M.import_data(cf.req(16), BearerAuth(key))  
+toy_coom_hours=M.import_data(cf.req2(16), BearerAuth(key))   
+'''
+
+
+def test_migration_User():  
+    toy_=pd.read_csv('users.csv')  
+    ts=cf.clen_user_nodes(toy_) 
+    mN.migration_user(ts, graph=graph) 
+    cvc=graph.run("MATCH (n:User) RETURN n LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False 
+    
+
+
+def test_migration_courts():
+    toy_=M.import_data(urlCourt1+str(0), BearerAuth(key) ) 
+    mN.migration_court(toy_, graph=graph) 
+    cvc=graph.run("MATCH (n:Court) RETURN n LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False 
+
+
+def test_migration_facility (): 
+    toy_=M.import_data(urlstade+str(0), BearerAuth(key) )  
+    
+    mN.migration_staduim(toy_, graph=graph) 
+    cvc=graph.run("MATCH (n:Facility) RETURN n LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False 
+    
+
+def test_migration_district (): 
+    toy_=M.import_data(urlDist, BearerAuth(key) )  
+    
+    mN.migration_dist(toy_, graph=graph) 
+    cvc=graph.run("MATCH (n:District) RETURN n LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False 
+    
+
+def test_migration_city(): 
+    toy_=M.import_data(urlcity, BearerAuth(key) )  
+    
+    mN.migration_City(toy_, graph=graph) 
+    cvc=graph.run("MATCH (n:City) RETURN n LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False  
+    
+
+    
+
+
+def test_belong(): 
+    toy_=M.import_data(urlCourt1+"0", BearerAuth(key)) 
+    migration_edges.belon_to_staduim(toy_, graph=graph) 
+    cvc=graph.run("MATCH ()-[r:BELONGS_TO]->()  RETURN r LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False    
+
+
+def test_located(): 
+    toy_=M.import_data(urlstade+"0", BearerAuth(key)) 
+    migration_edges.belon_to_dist(toy_, graph=graph) 
+    cvc=graph.run("MATCH ()-[r:LOCATED_AT]->()  RETURN r LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False
+    
+
+def test_IN(): 
+    toy_=M.import_data(urlDist, BearerAuth(key)) 
+    migration_edges.belon_to_City(toy_, graph=graph) 
+    cvc=graph.run("MATCH ()-[r:I_N]->()  RETURN r LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty == False 
+
+
+def test_Book(): 
+    toy_=M.import_data(cf.req(16), BearerAuth(key)) 
+    toy_=em.user__court(toy_) 
+    toy_=cf.clen_df_Bookings(toy_) 
+    migration_edges.user_to_c(toy_, graph=graph) 
+    cvc=graph.run("MATCH ()-[r:BOOKS_FOR]->()  RETURN r LIMIT 25") 
+    data_l=pd.DataFrame(cvc) 
+    assert data_l.empty== False  
+
+
+

@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+
+Created on Mon Jul 18 11:01:40 2022
+
+@author: midou 
+
+
+"""
+
+
+
+import requests
+import mange_func as M
+import Clean_df as cf 
+import edges_maker as em  
+import Nodes_maker as nm
+import BI_Migration_func as mf  
+from urls_passwords import *  
+import numpy as np
+import pandas as pd 
+
+
+class BearerAuth(requests.auth.AuthBase): # key communication 
+    def __init__(self, token):
+        self.token = token
+    def __call__(self, r):
+        r.headers["authorization"] = "Bearer " + self.token
+        return r 
+
+toy_user=M.import_data(urlUsers, BearerAuth(key) ) 
+toy_Booking=M.import_data(cf.req(16), BearerAuth(key))  
+toy_coom_hours=M.import_data(cf.req2(16), BearerAuth(key))   
+
+
+def test_clean_user (): 
+    ts=cf.clen_user_nodes(toy_user)  
+    assert all(ts.columns )== all(['firstName', 'lastName', 'email', 'langKey', 'gender', 'birthDate',
+       'phoneNumber', 'zipCode', 'attack', 'defense', 'speed', 'jump',
+       'physicalQualities', 'userId']) 
+    assert ts.empty == False  
+    
+
+
+
+def test_BI_info(): 
+    ts=cf.BI_info(toy_Booking)
+    for i in range(0,len(ts)) : 
+        assert isinstance(ts['Duration'][i], np.float64) ==True
+    
+
+def test_comm_resaume():
+    ts=cf.resume_com(toy_coom_hours) 
+    assert all(ts.columns)==all(['courtId','MounthServedNum', 'soldHours', 'totalCost', 'courtGrossAmount',
+           'Meanoftotalhours', 'First_mounth', 'First_year']) 
+    assert ts.empty == False 
+    
+def test_nodes_maker():
+    ts=nm.Node_user2(cf.BI_info(toy_Booking))  
+    assert all(ts.columns)==all(['userId','gross_amout_payed', 'totalCost', 'Duration'])
+    assert ts.empty == False 
+
+
+def test_edges_maker(): 
+    ts=em.user__court(toy_Booking) 
+    assert all(ts.columns)==all(['users id', 'court id', 'num_bookig', 'num_cancel',
+           'first booking date', 'last booking date'])
+    assert ts.empty == False  
+    
+
+

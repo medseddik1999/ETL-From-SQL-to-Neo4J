@@ -1,0 +1,123 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul 18 11:19:37 2022
+
+@author: Arianna
+"""
+
+from mange_func import import_data
+from mange_func import Number_of_page
+from urls_passwords import *
+from App_Migration import BearerAuth
+from App_Migration import py2neo
+import requests
+import mange_func as M
+import Clean_df as cf 
+import BI_Migration_func as Bf
+from urls_passwords import *  
+import numpy as np
+import pandas as pd 
+import mN 
+import migration_edges
+from App_Migration import graph
+import edges_maker as em
+from App_Migration import migra_BI 
+import Nodes_maker as nm 
+#Emptiness
+
+def test_userimport():
+    ts=import_data(urlUsers ,BearerAuth(key)) 
+    assert ts.empty == False
+   
+def test_court1import():
+    ts=import_data(urlCourt1, BearerAuth(key)) 
+    assert ts.empty == False
+        
+def test_court2import():
+    ts=import_data(urlCourt2 ,BearerAuth(key)) 
+    assert ts.empty == False
+    
+def test_distimport():
+    ts=import_data(urlDist, BearerAuth(key)) 
+    assert ts.empty == False
+    
+def test_stadeimport():
+    ts=import_data(urlstade, BearerAuth(key)) 
+    assert ts.empty == False
+    
+def test_cityimport():
+    ts=import_data(urlcity, BearerAuth(key)) 
+    assert ts.empty == False
+
+
+
+#security: we choose a random key 
+
+def test_security_API():
+    response = requests.get(urlDist ,auth=BearerAuth("gdhhdgdggdgege"))
+    assert response.status_code != 200
+
+
+
+#Connection
+
+def test_connect_Neo4j():
+    graph=py2neo.Graph(httpneo, auth=(user, password), name="graph.db")
+    assert graph.name == "graph.db" 
+
+
+#Number of page
+    
+def test_number_page():
+    t=Number_of_page(urlCourt1, BearerAuth(key))
+    assert t == 12
+    
+ #12 for Court1 is ok. 
+#From now on, first check what number to write  
+    
+    
+
+
+
+toy_user=M.import_data(urlUsers, BearerAuth(key) ) 
+toy_Booking=M.import_data(cf.req(16), BearerAuth(key))  
+toy_coom_hours=M.import_data(cf.req2(16), BearerAuth(key))   
+
+
+def test_clean_user (): 
+    ts=cf.clen_user_nodes(toy_user)  
+    assert all(ts.columns )== all(['firstName', 'lastName', 'email', 'langKey', 'gender', 'birthDate',
+       'phoneNumber', 'zipCode', 'attack', 'defense', 'speed', 'jump',
+       'physicalQualities', 'userId']) 
+    assert ts.empty == False  
+    
+
+
+
+def test_BI_info(): 
+    ts=cf.BI_info(toy_Booking)
+    for i in range(0,len(ts)) : 
+        assert isinstance(ts['Duration'][i], np.float64) ==True
+    
+
+def test_comm_resaume():
+    ts=cf.resume_com(toy_coom_hours) 
+    assert all(ts.columns)==all(['courtId','MounthServedNum', 'soldHours', 'totalCost', 'courtGrossAmount',
+           'Meanoftotalhours', 'First_mounth', 'First_year']) 
+    assert ts.empty == False 
+    
+def test_nodes_maker():
+    ts=nm.Node_user2(cf.BI_info(toy_Booking))  
+    assert all(ts.columns)==all(['userId','gross_amout_payed', 'totalCost', 'Duration'])
+    assert ts.empty == False 
+
+
+def test_edges_maker(): 
+    ts=em.user__court(toy_Booking) 
+    assert all(ts.columns)==all(['users id', 'court id', 'num_bookig', 'num_cancel',
+           'first booking date', 'last booking date'])
+    assert ts.empty == False  
+
+    
+    
+

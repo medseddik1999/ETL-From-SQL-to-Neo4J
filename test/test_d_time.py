@@ -1,0 +1,1 @@
+import subprocessimport timeit def test_time():     start=timeit.default_timer()     subprocess.call("python App_Migration.py" , shell=True)     c=(timeit.default_timer()-start)/60     assert c<=22
