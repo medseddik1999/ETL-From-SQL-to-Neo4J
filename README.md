@@ -23,10 +23,6 @@ This is a Python ETL (Extract, Transform, Load) application designed to extract 
 
 
 
-## Acknowledgements
-
-- [SEDDIK Abdelhakim](https://github.com/medseddik1999) - Thanks for the inspiration and guidance.
-
 ## Contact
 
-For any inquiries or support, please contact [email@example.com](mailto:midou.ik.1999@gmail.com).
+For any inquiries or support, please contact [midou.ik.1999@gmail.com](mailto:midou.ik.1999@gmail.com).
