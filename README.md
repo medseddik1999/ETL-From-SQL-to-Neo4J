@@ -22,7 +22,3 @@ This is a Python ETL (Extract, Transform, Load) application designed to extract 
 5. Run the ETL process: `python __main__.py`
 
 
-
-## Contact
-
-For any inquiries or support, please contact [midou.ik.1999@gmail.com](mailto:midou.ik.1999@gmail.com).
