@@ -71,7 +71,7 @@ This project explores that transition and the engineering concepts behind it.
 
 ## Author
 
-**Mohamed Abdelhakim Seddik** — Data Scientist
+**Abdelhakim Seddik** — Data Scientist
 
 - GitHub: [@medseddik1999](https://github.com/medseddik1999)
 - LinkedIn: [Connect with me](https://www.linkedin.com/in/abdelhakim-mohamed-seddik-a70474194/)
